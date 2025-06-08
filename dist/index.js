@@ -17,13 +17,10 @@ const port = process.env.PORT || 8080;
 app.use(express_1.default.json());
 app.use((0, cors_1.default)());
 mongoose_1.default
-    .connect(process.env.DATABASE_URL || "")
+    .connect(process.env.MONGO_URL || "")
     .then(() => console.log("Mongo Connected!"))
     .catch((error) => console.log("Failed to Connect!", error));
 (0, productServices_1.seedInitialProduts)();
-app.get("/", (req, res) => {
-    res.send("E-commerce Backend is running!");
-});
 app.use("/user", userRouter_1.default);
 app.use("/product", productRouter_1.default);
 app.use("/cart", cartRouter_1.default);
