@@ -21,10 +21,6 @@ mongoose
 
 seedInitialProduts();
 
-app.get("/", (req, res) => {
-  res.send("E-commerce Backend is running!");
-});
-
 app.use("/user", userRouter);
 app.use("/product", routerProduct);
 app.use("/cart", routerCart);
