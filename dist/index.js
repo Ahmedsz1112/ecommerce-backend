@@ -16,16 +16,14 @@ const app = (0, express_1.default)();
 const port = process.env.PORT || 8080;
 app.use(express_1.default.json());
 app.use((0, cors_1.default)());
-const dbUrl = process.env.DATABASE_URL;
-if (!dbUrl) {
-    console.error("DATABASE_URL is not defined!");
-    process.exit(1);
-}
 mongoose_1.default
-    .connect(dbUrl)
+    .connect(process.env.DATABASE_URL || "")
     .then(() => console.log("Mongo Connected!"))
     .catch((error) => console.log("Failed to Connect!", error));
 (0, productServices_1.seedInitialProduts)();
+app.get("/", (req, res) => {
+    res.send("E-commerce Backend is running!");
+});
 app.use("/user", userRouter_1.default);
 app.use("/product", productRouter_1.default);
 app.use("/cart", cartRouter_1.default);
