@@ -14,19 +14,16 @@ const port = process.env.PORT || 8080;
 app.use(express.json());
 app.use(cors());
 
-
-const dbUrl = process.env.DATABASE_URL;
-if (!dbUrl) {
-  console.error("DATABASE_URL is not defined!");
-  process.exit(1);
-}
-
 mongoose
-  .connect(dbUrl)
+  .connect(process.env.DATABASE_URL || "")
   .then(() => console.log("Mongo Connected!"))
   .catch((error) => console.log("Failed to Connect!", error));
 
 seedInitialProduts();
+
+app.get("/", (req, res) => {
+  res.send("E-commerce Backend is running!");
+});
 
 app.use("/user", userRouter);
 app.use("/product", routerProduct);
