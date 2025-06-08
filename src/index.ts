@@ -22,7 +22,7 @@ mongoose
 seedInitialProduts();
 
 app.use("/user", userRouter);
-app.use("/product", routerProduct);
+app.use("/", routerProduct);
 app.use("/cart", routerCart);
 
 app.listen(port, () => {
