@@ -43,61 +43,97 @@ dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 8080;
+const isProduction = process.env.NODE_ENV === 'production';
 
-// Middleware
-app.use(express.json());
+// إعداد CORS
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "*", // تحديد الـ frontend URL
+  origin: isProduction 
+    ? [process.env.FRONTEND_URL || "*"] 
+    : ["http://localhost:3000", "http://localhost:5173"], // للتطوير المحلي
   credentials: true
 }));
 
-// Health check endpoint للـ Railway
-app.get("/health", (req, res) => {
-  res.status(200).json({ 
-    status: "OK", 
-    timestamp: new Date().toISOString(),
-    port: port 
+app.use(express.json());
+
+// Health check endpoint
+app.get("/", (req, res) => {
+  res.json({ 
+    message: "E-commerce API is running!",
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString()
   });
 });
 
-// دالة الاتصال بـ MongoDB مع معالجة أفضل للأخطاء
-async function connectToDatabase() {
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "OK" });
+});
+
+// دالة الاتصال بـ MongoDB
+async function connectToMongoDB() {
   try {
-    const mongoUrl = process.env.MONGO_URL || process.env.DATABASE_URL;
+    const mongoUrl = process.env.MONGO_URL;
     
     if (!mongoUrl) {
-      throw new Error("MongoDB URL is not provided in environment variables");
+      throw new Error("MONGO_URL is not defined in environment variables");
     }
 
-    await mongoose.connect(mongoUrl, {
-      // خيارات الاتصال المحدثة
-      maxPoolSize: 10, // عدد الاتصالات المتزامنة
-      serverSelectionTimeoutMS: 5000, // مهلة الاتصال
-      socketTimeoutMS: 45000, // مهلة العمليات
-      bufferCommands: false, // تعطيل buffering في حالة عدم الاتصال
-      bufferMaxEntries: 0
-    });
-
-    console.log("✅ MongoDB Connected Successfully!");
+    console.log(`🔄 Connecting to MongoDB...`);
+    console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
     
-    // تشغيل seed بعد الاتصال الناجح
-    await seedInitialProduts();
-    console.log("✅ Initial products seeded!");
+    // خيارات مختلفة للـ production والتطوير
+    const connectionOptions = {
+      maxPoolSize: isProduction ? 10 : 5,
+      serverSelectionTimeoutMS: isProduction ? 10000 : 5000,
+      socketTimeoutMS: 45000,
+      bufferCommands: false,
+      bufferMaxEntries: 0,
+      // SSL للـ production فقط (MongoDB Atlas)
+      ...(isProduction && mongoUrl.includes('mongodb+srv') && {
+        ssl: true,
+        sslValidate: true
+      })
+    };
+
+    await mongoose.connect(mongoUrl, connectionOptions);
+    
+    console.log("✅ MongoDB Connected Successfully!");
+    console.log(`📊 Database: ${mongoose.connection.name}`);
+    
+    // Seed البيانات الأولية
+    try {
+      await seedInitialProduts();
+      console.log("✅ Initial products seeded!");
+    } catch (seedError) {
+      console.log("⚠️ Seed data already exists or failed:", seedError);
+    }
     
   } catch (error) {
     console.error("❌ MongoDB Connection Failed:", error);
-    // إنهاء التطبيق في حالة فشل الاتصال
-    process.exit(1);
+    
+    // في الـ production، أوقف التطبيق
+    if (isProduction) {
+      process.exit(1);
+    } else {
+      console.log("⚠️ Running in development mode, continuing without database...");
+    }
   }
 }
 
-// معالجة أخطاء MongoDB
+// معالجة أحداث MongoDB
 mongoose.connection.on('error', (error) => {
   console.error('❌ MongoDB Error:', error);
 });
 
 mongoose.connection.on('disconnected', () => {
   console.log('⚠️ MongoDB Disconnected');
+  
+  // إعادة الاتصال في الـ production
+  if (isProduction) {
+    setTimeout(() => {
+      console.log('🔄 Attempting to reconnect to MongoDB...');
+      connectToMongoDB();
+    }, 5000);
+  }
 });
 
 mongoose.connection.on('reconnected', () => {
@@ -109,7 +145,7 @@ app.use("/user", userRouter);
 app.use("/product", routerProduct);
 app.use("/cart", routerCart);
 
-// Catch-all route للـ 404
+// 404 Handler
 app.use("*", (req, res) => {
   res.status(404).json({ 
     error: "Route not found",
@@ -117,18 +153,19 @@ app.use("*", (req, res) => {
   });
 });
 
-// Error handling middleware
+// Error Handler
 app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error("❌ Server Error:", error);
   res.status(500).json({ 
     error: "Internal Server Error",
-    message: process.env.NODE_ENV === 'development' ? error.message : undefined
+    ...((!isProduction) && { message: error.message, stack: error.stack })
   });
 });
 
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('⚠️ Shutting down gracefully...');
+// Graceful Shutdown
+const gracefulShutdown = async (signal: string) => {
+  console.log(`⚠️ ${signal} received, shutting down gracefully...`);
+  
   try {
     await mongoose.connection.close();
     console.log('✅ MongoDB connection closed');
@@ -137,32 +174,25 @@ process.on('SIGINT', async () => {
     console.error('❌ Error during shutdown:', error);
     process.exit(1);
   }
-});
+};
 
-process.on('SIGTERM', async () => {
-  console.log('⚠️ SIGTERM received, shutting down...');
-  try {
-    await mongoose.connection.close();
-    console.log('✅ MongoDB connection closed');
-    process.exit(0);
-  } catch (error) {
-    console.error('❌ Error during shutdown:', error);
-    process.exit(1);
-  }
-});
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 // بدء الخادم
 async function startServer() {
   try {
-    // الاتصال بقاعدة البيانات أولاً
-    await connectToDatabase();
+    // الاتصال بقاعدة البيانات
+    await connectToMongoDB();
     
     // بدء الخادم
     app.listen(port, () => {
       console.log(`🚀 Server is running on port ${port}`);
-      console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🔗 Health check: http://localhost:${port}/health`);
+      console.log(`🌐 Access: ${isProduction ? 'Railway URL' : `http://localhost:${port}`}`);
+      console.log(`🔐 JWT Secret: ${process.env.JWT_SECRET ? 'Configured' : 'Missing'}`);
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     });
+    
   } catch (error) {
     console.error("❌ Failed to start server:", error);
     process.exit(1);
@@ -171,3 +201,6 @@ async function startServer() {
 
 // تشغيل الخادم
 startServer();
+
+// Export للاختبارات
+export default app;
