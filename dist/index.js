@@ -10,13 +10,19 @@ const productServices_1 = require("./services/productServices");
 const productRouter_1 = __importDefault(require("./routers/productRouter"));
 const cartRouter_1 = __importDefault(require("./routers/cartRouter"));
 const cors_1 = __importDefault(require("cors"));
-require("dotenv").config();
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
 const app = (0, express_1.default)();
 const port = process.env.PORT || 8080;
 app.use(express_1.default.json());
 app.use((0, cors_1.default)());
+const dbUrl = process.env.DATABASE_URL;
+if (!dbUrl) {
+    console.error("DATABASE_URL is not defined!");
+    process.exit(1);
+}
 mongoose_1.default
-    .connect(process.env.DATABASE_URL || '')
+    .connect(dbUrl)
     .then(() => console.log("Mongo Connected!"))
     .catch((error) => console.log("Failed to Connect!", error));
 (0, productServices_1.seedInitialProduts)();
