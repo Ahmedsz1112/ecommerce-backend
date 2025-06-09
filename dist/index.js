@@ -12,7 +12,7 @@ const cartRouter_1 = __importDefault(require("./routers/cartRouter"));
 const cors_1 = __importDefault(require("cors"));
 require("dotenv").config();
 const app = (0, express_1.default)();
-const port = process.env.PORT || 8080;
+const port = process.env.PORT;
 app.use(express_1.default.json());
 app.use((0, cors_1.default)());
 mongoose_1.default
