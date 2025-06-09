@@ -17,7 +17,8 @@ router.get("/", validateJWT, async (req: ExtendRequest, res) => {
     const userId = req.user._id;
     const cart = await getActiveCartForUser({ userId , populateProduct: true });
     res.status(200).json(cart);
-  } catch {
+  } catch (err){
+    console.error("Error in GET /cart:", err);
     res.status(500).json("Something want wrong!");
   }
 });
@@ -28,7 +29,7 @@ router.delete("/", validateJWT, async (req: ExtendRequest, res) => {
     const { data, statusCode } = await clearCart({ userId });
     res.status(statusCode).json(data);
   } catch {
-    res.status(500).json("Something want wrong!");
+    res.status(500).json("Something went wrong!");
   }
 });
 
@@ -43,7 +44,7 @@ router.post("/items", validateJWT, async (req: ExtendRequest, res) => {
     });
     res.status(statusCode).json(data);
   } catch {
-    res.status(500).json("Something want wrong!");
+    res.status(500).json("Something went wrong!");
   }
 });
 
@@ -58,7 +59,7 @@ router.put("/items", validateJWT, async (req: ExtendRequest, res) => {
     });
     res.status(statusCode).json(data);
   } catch {
-    res.status(500).json("Something want wrong!");
+    res.status(500).json("Something went wrong!");
   }
 });
 
@@ -75,7 +76,7 @@ router.delete(
       });
       res.status(statusCode).json(data);
     } catch {
-      res.status(500).json("Something want wrong!");
+      res.status(500).json("Something went wrong!");
     }
   }
 );
@@ -87,7 +88,7 @@ router.post("/checkout", validateJWT, async (req: ExtendRequest, res) => {
     const { data, statusCode } = await checkout({ userId, address });
     res.status(statusCode).json(data);
   } catch {
-    res.status(500).json("Something want wrong!");
+    res.status(500).json("Something went wrong!");
   }
 });
 
