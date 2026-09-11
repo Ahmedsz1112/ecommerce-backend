@@ -1,11 +1,11 @@
 # E-Commerce REST API
 
-A REST API for an e-commerce storefront — Express and TypeScript with Mongoose
-models, JWT authentication and bcrypt password hashing.
+A REST API for an e-commerce storefront, built with Express and TypeScript.
+Mongoose models, JWT authentication, bcrypt password hashing.
 
 ## Overview
 
-The service exposes three route groups — users, products and cart — backed by
+The service exposes three route groups (users, products and cart), backed by
 Mongoose models against MongoDB. Authenticated routes are guarded by a JWT
 middleware that verifies the bearer token and attaches the user to the request.
 Business logic sits in a services layer so the routers stay thin.
@@ -49,7 +49,7 @@ npm run dev
 
 ## Environment Variables
 
-Create a `.env` file in the project root. **Do not commit it** — add `.env` to
+Create a `.env` file in the project root. **Do not commit it.** Add `.env` to
 `.gitignore` first.
 
 ```bash
